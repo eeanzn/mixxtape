@@ -1,0 +1,14 @@
+{
+  "name": "mixxtape",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:local": "wrangler d1 migrations apply mixxtape --local",
+    "db:remote": "wrangler d1 migrations apply mixxtape --remote",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

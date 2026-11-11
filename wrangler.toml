@@ -1,0 +1,16 @@
+name = "mixxtape"
+main = "src/worker.js"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mixxtape"
+# `npx wrangler d1 create mixxtape` 가 알려주는 id로 바꾼다
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
