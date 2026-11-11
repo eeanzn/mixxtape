@@ -1,4 +1,4 @@
-# Kanqaroo — 작업 규칙
+# Mixxtape — 작업 규칙
 
 친구들이 한 곡씩 몰래 넣어 같이 완성하는 블라인드 플레이리스트(V2). 2026-11-04에 main을 새로 시작했다. V1(아코디언 피드, Stage 2 Next.js 앱, V1 로고)은 `v1` 브랜치에만 있고, 그대로 가져오지 않는다. 지금은 **1차 프로토타입 단계**: 빨리 만들고 고칠 수 있는 한 파일 HTML, 서버 없이 이 기기 localStorage.
 
@@ -8,23 +8,23 @@
 
 | 무엇                                          | 원본                                                                                          |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| 비전·원칙·정한 것/안 정한 것·결정 기록·리서치 | Notion [Kanqaroo](https://app.notion.com/p/damhong/Kanqaroo-3f20e0600bce810296edc52af16b4c3a) |
+| 비전·원칙·정한 것/안 정한 것·결정 기록·리서치 | Notion [Mixxtape](https://app.notion.com/p/damhong/Mixxtape-3f20e0600bce810296edc52af16b4c3a) |
 | 무엇을 만들지 (제품 브리프)                   | `PRODUCT.md`                                                                                  |
 | 디자인 시스템 원칙·컴포넌트 이름 (임시)       | `DESIGN.md`                                                                                   |
 | 화면·인터랙션·UI 문구·토큰 값 (지금)          | `prototype/index.html`                                                                        |
 
 결정을 바꾸거나 새로 내리면 Notion **Decision Log**에 한 줄 남긴다.
 
-**디자인 태도는 Notion Kanqaroo 페이지의 "디자인 태도"가 원본이다.** 요약: 만지는 재미가 먼저(물리감·소리까지), 은유 하나를 끝까지(지금은 주머니 안의 카드 서랍), 색은 주머니만 갖고 UI는 무채색·그라데이션 줄임, 제스처엔 늘 버튼·키보드 대안. 평범한 폼 화면은 실패로 본다. 디자인 시스템(임시)은 `DESIGN.md`: 원칙·이름은 거기, 값은 `prototype/index.html`의 `:root`. 로고는 미정: 헤더는 임시 글자 블록.
+**디자인 태도는 Notion Mixxtape 페이지의 "디자인 태도"가 원본이다.** 요약: 만지는 재미가 먼저(물리감·소리까지), 은유 하나를 끝까지(지금은 카드 서랍에 한 장씩 꽂아 만드는 테이프), 색은 테이프만 갖고 UI는 무채색·그라데이션 줄임, 제스처엔 늘 버튼·키보드 대안. 평범한 폼 화면은 실패로 본다. 디자인 시스템(임시)은 `DESIGN.md`: 원칙·이름은 거기, 값은 `prototype/index.html`의 `:root`. 로고는 미정: 헤더는 임시 글자 블록.
 
 ## 원칙
 
-- Kanqaroo는 떡밥만 만들고, 노는 건 단톡방에서. 투표·댓글 같은 건 기능으로 넣지 않는다
+- Mixxtape는 떡밥만 만들고, 노는 건 단톡방에서. 투표·댓글 같은 건 기능으로 넣지 않는다
 - 로그인 없음. 링크 + 닉네임. 만든 사람은 관리 링크(열쇠)로 알아본다
 - 오디오는 호스팅하지 않는다. 듣기·가져가기는 검색 링크와 텍스트·CSV
 
 ## 명령어
 
 ```bash
-python3 prototype/build.py   # dist/kanqaroo.html(Artifact) + dist/pages/(Pages, main 푸시 시 자동 배포)
+python3 prototype/build.py   # dist/mixxtape.html(Artifact) + dist/pages/(Pages, main 푸시 시 자동 배포)
 ```

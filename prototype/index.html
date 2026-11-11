@@ -1,10 +1,10 @@
 <meta name="description" content="친구들이 한 곡씩 몰래 넣어 같이 완성하는 블라인드 플레이리스트">
-<title>Kanqaroo</title>
+<title>Mixxtape</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap" rel="stylesheet">
 <style>
-/* ══ Kanqaroo 임시 디자인 시스템 (DESIGN.md 참고)
+/* ══ Mixxtape 임시 디자인 시스템 (DESIGN.md 참고)
    레퍼런스: Variadex 카드 서랍(탭·색 분류) · Snootie 원색 블록(검은 테두리·스티커) · 신문형 웹(고정폭·괘선)
    원색 블록과 굵은 테두리는 "만지는 것"(카드·버튼·서랍), 얇은 괘선은 "읽는 것"(목록·메타) ══ */
 :root {
@@ -56,7 +56,7 @@ p { margin: 0; }
 .table a { text-decoration: none; display: block; }
 .table .num { width: 3ch; font-weight: 700; }
 
-/* ══ 주머니 서랍: 주머니(원색 몸통) 안에 카드 서랍. 카드는 탭만 보이게 줄지어 꽂힘 ══ */
+/* ══ 테이프 서랍: 원색 몸통 안에 카드 서랍. 카드는 탭만 보이게 줄지어 꽂힘 ══ */
 .drawer { position: relative; width: min(330px, 86vw); aspect-ratio: 1 / 1.02; margin: 4px auto 6px; user-select: none; -webkit-user-select: none; transform-origin: 50% 95%; touch-action: manipulation; }
 .drawer[data-drawer] { cursor: pointer; }
 .d-body { position: absolute; inset: 0; background: var(--c); border: var(--bd); border-radius: 34px 34px 46% 46% / 34px 34px 30% 30%; box-shadow: var(--sh-lg); }
@@ -126,7 +126,7 @@ p { margin: 0; }
 
 <div class="wrap">
   <header class="grid" aria-label="머리">
-    <button class="blk on-orange logo s2" data-go="" aria-label="kanqaroo 처음으로">kanq<br>aroo</button>
+    <button class="blk on-orange logo s2" data-go="" aria-label="mixxtape 처음으로">mixx<br>tape</button>
     <div class="blk on-yellow s3" style="display:grid;align-content:center;font-size:12px;font-weight:700;line-height:1.4">단톡방 친구들이<br>몰래 채우는 플리</div>
     <button class="blk on-ink s1" id="snd" aria-label="소리" aria-pressed="true" style="grid-column:span 1;font-size:18px;cursor:pointer;padding:0">♪</button>
   </header>
@@ -144,11 +144,11 @@ const pad = (n) => String(n).padStart(2, '0')
 
 /* ════════ 저장 (데모: 서버 없이 이 기기 localStorage) ════════ */
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('kq3.' + k); return v ? JSON.parse(v) : d } catch { return d } },
-  set(k, v) { try { localStorage.setItem('kq3.' + k, JSON.stringify(v)) } catch { /* 저장 못 함 */ } },
+  get(k, d) { try { const v = localStorage.getItem('mx1.' + k); return v ? JSON.parse(v) : d } catch { return d } },
+  set(k, v) { try { localStorage.setItem('mx1.' + k, JSON.stringify(v)) } catch { /* 저장 못 함 */ } },
 }
 const uid = (n = 6) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('')
-// 주머니 색 (원색 블록) · 카드 탭 색은 순서대로 돌아감
+// 테이프 색 (원색 블록) · 카드 탭 색은 순서대로 돌아감
 const COLORS = [['#E8650E', '#111111'], ['#2236C4', '#FFFFFF'], ['#4C9265', '#FFFFFF'], ['#D72A35', '#FFFFFF'], ['#F6D945', '#111111'], ['#8556D4', '#FFFFFF']]
 const TABS = ['var(--yellow)', 'var(--pink)', 'var(--green)', 'var(--blue)', 'var(--orange)', 'var(--violet)', 'var(--red)']
 const tabInk = (i) => ([2, 3, 5, 6].includes(i % TABS.length) ? '#fff' : 'var(--ink)')
@@ -188,7 +188,7 @@ const blip = (f, d) => tone(f, f * 1.5, d, .12, 'square')
 const thud = () => { tone(200, 70, .14, .3); noise(.06, 2400, 900, .2) }
 const clack = () => { for (let i = 0; i < 4; i++) setTimeout(() => noise(.03, 3000, 1500, .14), i * 45) }
 
-/* ════════ 주머니 서랍 그리기: 뒤 카드가 위, 앞 카드가 아래로 겹침. 탭은 왼·가운데·오른쪽으로 엇갈림 ════════ */
+/* ════════ 테이프 서랍 그리기: 뒤 카드가 위, 앞 카드가 아래로 겹침. 탭은 왼·가운데·오른쪽으로 엇갈림 ════════ */
 function cardStyle(r, i) {
   const n = Math.max(1, r.slots - 1), top = 12 + (i / n) * 54
   return `top:${top.toFixed(1)}%;z-index:${i + 1}`
@@ -201,11 +201,11 @@ function drawerHtml(r, { sm = false, tape = false } = {}) {
       ? `<div class="ic${i === mine ? ' mine' : ''}" style="${cardStyle(r, i)}"><span class="tab" style="${pos};--tc:${TABS[i % TABS.length]};color:${tabInk(i)}">${i === mine ? 'ME' : 'NO.' + pad(i + 1)}</span></div>`
       : `<div class="ic empty" style="${cardStyle(r, i).replace(/z-index:\d+/, 'z-index:0')}"><span class="tab" style="${pos}">${pad(i + 1)}</span></div>`
   }).join('')
-  return `<div class="drawer${sm ? ' sm' : ''}" ${sm ? '' : 'data-drawer role="button" tabindex="0" aria-label="주머니 서랍. 누르면 흔들려요"'} style="${colorVars(r)}">
+  return `<div class="drawer${sm ? ' sm' : ''}" ${sm ? '' : 'data-drawer role="button" tabindex="0" aria-label="테이프 서랍. 누르면 흔들려요"'} style="${colorVars(r)}">
     <div class="d-body"></div>
     <div class="d-well">${cards}</div>
-    <div class="d-plate"><span class="rivet l"></span><span class="rivet r"></span><span class="cap">kanqaroo blind file</span><span class="big">${count}<small> / ${r.slots}</small></span><span class="cap">1 card each</span></div>
-    ${tape ? '<div class="tape"><div class="tape-strip">SEALED · OPEN ME</div><button class="tab-pull" data-pull aria-label="테이프 뜯기. 오른쪽으로 끌거나 눌러요">→</button></div>' : ''}
+    <div class="d-plate"><span class="rivet l"></span><span class="rivet r"></span><span class="cap">mixxtape blind file</span><span class="big">${count}<small> / ${r.slots}</small></span><span class="cap">1 card each</span></div>
+    ${tape ? '<div class="tape"><div class="tape-strip">SEALED · OPEN ME</div><button class="tab-pull" data-pull aria-label="봉인 띠 뜯기. 오른쪽으로 끌거나 눌러요">→</button></div>' : ''}
   </div>`
 }
 function shake(el, k = 1) {
@@ -245,22 +245,22 @@ function viewHome() {
     <section class="blk" style="position:relative;padding:18px 16px"><h1>한 곡씩 몰래 넣고<br>꽉 차면 같이 열어요</h1>
       <p class="sub" style="margin-top:8px">링크를 단톡방에 던지면 한 사람당 카드 한 장. 다 찰 때까지 누가 뭘 넣었는지 아무도 몰라요.</p><span class="sticker">blind!</span></section>
     ${demo ? drawerHtml(demo) : ''}
-    <div class="grid"><a class="btn on-blue s4" href="#/new">새 주머니 만들기</a><a class="btn on-green s2" href="#/r/${demo?.id || ''}">예시 열기</a></div>
-    ${list.length ? `<section><p class="cap" style="margin-bottom:4px">내 주머니</p><table class="table"><thead><tr><th>NO.</th><th>TITLE</th><th style="text-align:right">FILE</th></tr></thead><tbody>${list.map((r, i) => `
+    <div class="grid"><a class="btn on-blue s4" href="#/new">새 테이프 만들기</a><a class="btn on-green s2" href="#/r/${demo?.id || ''}">예시 열기</a></div>
+    ${list.length ? `<section><p class="cap" style="margin-bottom:4px">내 테이프</p><table class="table"><thead><tr><th>NO.</th><th>TITLE</th><th style="text-align:right">FILE</th></tr></thead><tbody>${list.map((r, i) => `
       <tr><td class="num">${pad(i + 1)}</td><td><a href="#/r/${r.id}">${esc(r.title)}</a></td><td style="text-align:right;white-space:nowrap">${isOpen(r) ? '<b>OPEN</b>' : `${r.tracks.length}/${r.slots}`}</td></tr>`).join('')}</tbody></table></section>` : ''}
-    <p class="tiny center">kanqaroo는 떡밥만 만들어요. 노는 건 단톡방에서.</p>`
+    <p class="tiny center">mixxtape는 떡밥만 만들어요. 노는 건 단톡방에서.</p>`
   fileIn($('#view [data-drawer]'))
 }
 
-/* ════════ 새 주머니 ════════ */
+/* ════════ 새 테이프 ════════ */
 function viewNew() {
   const draft = { id: 'preview', title: '', slots: 9, color: 0, tracks: [] }
   $('#view').innerHTML = `
-    <section class="blk on-yellow"><h1>새 주머니 만들기</h1></section>
+    <section class="blk on-yellow"><h1>새 테이프 만들기</h1></section>
     <div id="pv"></div>
     <form id="nf" class="blk" style="display:grid;gap:14px;padding:16px" novalidate>
-      <label class="field">TITLE · 주머니 이름<input type="text" id="n-title" maxlength="40" placeholder="우리 단톡방 올해의 9곡" required></label>
-      <div class="field">COLOR · 주머니 색<div class="sws">${COLORS.map(([c], i) => `<button type="button" class="sw" style="--s:${c}" data-sw="${i}" aria-label="색 ${i + 1}" aria-pressed="${i === 0}"></button>`).join('')}</div></div>
+      <label class="field">TITLE · 테이프 이름<input type="text" id="n-title" maxlength="40" placeholder="우리 단톡방 올해의 9곡" required></label>
+      <div class="field">COLOR · 테이프 색<div class="sws">${COLORS.map(([c], i) => `<button type="button" class="sw" style="--s:${c}" data-sw="${i}" aria-label="색 ${i + 1}" aria-pressed="${i === 0}"></button>`).join('')}</div></div>
       <div class="field">SLOTS · 넣을 사람 수<div class="stepper"><button type="button" class="btn sm" data-step="-1" aria-label="한 자리 빼기">−</button><output id="n-slots" aria-live="polite">9</output><button type="button" class="btn sm" data-step="1" aria-label="한 자리 더하기">+</button></div></div>
       <label class="field">NAME · 내 이름<input type="text" id="n-name" maxlength="12" placeholder="단톡방에서 쓰는 이름" required></label>
       <label class="check"><input type="checkbox" id="n-names" checked>열 때 넣은 사람 이름도 보여주기</label>
@@ -284,11 +284,11 @@ function viewNew() {
   })
 }
 
-/* ════════ 주머니 방 (모으는 중) ════════ */
+/* ════════ 테이프 방 (모으는 중) ════════ */
 function viewRoom(r, dropIdx = -1) {
   const my = me[r.id], joined = my?.idx != null, left = r.slots - r.tracks.length
   $('#view').innerHTML = `
-    <section class="blk" style="${colorVars(r)};background:var(--c);color:var(--on-c)"><p class="cap">${esc(r.owner)}님의 블라인드 주머니</p><h1>${esc(r.title)}</h1></section>
+    <section class="blk" style="${colorVars(r)};background:var(--c);color:var(--on-c)"><p class="cap">${esc(r.owner)}님의 블라인드 테이프</p><h1>${esc(r.title)}</h1></section>
     <div id="dz">${drawerHtml(r)}</div>
     <p class="tiny center">${left}자리 남았어요 · 서랍을 톡 쳐 봐요</p>
     ${joined ? `
@@ -369,13 +369,13 @@ function fly(r) {
   ghost.animate([{ transform: flip.style.transform || 'none' }, { transform: `translate(${tx * .5}px, ${ty * .6 - 60}px) rotate(-8deg) scale(.55, .45)`, offset: .55 }, { transform: `translate(${tx}px, ${ty}px) scale(.8, .12)`, opacity: .9 }], { duration: 600, easing: 'cubic-bezier(.4,0,.3,1)' }).finished.then(() => { ghost.remove(); commit() })
 }
 
-/* ════════ 개봉: 빨간 봉인 테이프를 끝까지 당겨 찢기 ════════ */
+/* ════════ 개봉: 빨간 봉인 띠를 끝까지 당겨 찢기 ════════ */
 function viewTear(r) {
   const forced = r.opened && !isFull(r)
   $('#view').innerHTML = `
     <section class="blk" style="${colorVars(r)};background:var(--c);color:var(--on-c)"><p class="cap">${forced ? '만든 사람이 지금 열기로 했어요' : '꽉 찼어요'}</p><h1>${esc(r.title)}</h1></section>
     <div id="dz">${drawerHtml(r, { tape: true })}</div>
-    <p class="center sub" style="font-weight:700">테이프를 오른쪽으로 끝까지 당겨요</p>
+    <p class="center sub" style="font-weight:700">봉인 띠를 오른쪽으로 끝까지 당겨요</p>
     <button class="btn full" data-act="tear">그냥 바로 열기</button>`
   const dr = $('#dz .drawer'), tape = $('.tape', dr), tab = $('[data-pull]', dr)
   if (!RM) tab.animate([{ translate: '0 0' }, { translate: '14px 0' }, { translate: '0 0' }], { duration: 1200, iterations: Infinity, easing: 'ease-in-out' })
@@ -404,7 +404,7 @@ function tearOpen(r) {
 }
 function viewOpened(r, fresh = false) {
   $('#view').innerHTML = `
-    <section class="blk" style="${colorVars(r)};background:var(--c);color:var(--on-c)"><p class="cap">opened · ${r.tracks.length} cards · ${esc(r.owner)}님의 주머니</p><h1>${esc(r.title)}</h1></section>
+    <section class="blk" style="${colorVars(r)};background:var(--c);color:var(--on-c)"><p class="cap">opened · ${r.tracks.length} cards · ${esc(r.owner)}님의 테이프</p><h1>${esc(r.title)}</h1></section>
     <div class="ocards">${r.tracks.map((s, i) => `
       <article class="oc"><span class="tab" style="left:${[10, 38, 66][i % 3]}%;--tc:${TABS[i % TABS.length]};color:${tabInk(i)}">NO.${pad(i + 1)}</span>
         <span class="t">${esc(s.t)}</span><span class="sub">${esc(s.a)}</span>
@@ -413,7 +413,7 @@ function viewOpened(r, fresh = false) {
       <p class="sub">목록을 복사해서 TuneMyMusic 같은 변환 서비스에 붙여 넣으면 Spotify·Apple Music·YouTube Music 플리가 돼요.</p>
       <div class="row"><button class="btn on-ink" data-act="copy-list">목록 복사</button><button class="btn" data-act="csv">CSV 받기</button></div>
       <a class="btn on-yellow full" href="https://www.tunemymusic.com/" target="_blank" rel="noopener">TuneMyMusic 열기</a></section>
-    <div class="row"><button class="btn c" data-act="share">연 주머니 공유</button><button class="btn" data-act="replay">다시 뜯어 보기</button></div>
+    <div class="row"><button class="btn c" data-act="share">연 테이프 공유</button><button class="btn" data-act="replay">다시 뜯어 보기</button></div>
     <section class="demo"><button class="btn sm" data-act="reset">처음 상태로 되돌리기 (데모)</button></section>`
   if (fresh && !RM) $('#view').querySelectorAll('.oc').forEach((c, i) => {
     c.animate([{ transform: 'rotateX(-85deg) translateY(-24px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 480, delay: i * 110, easing: 'cubic-bezier(.25,1.3,.5,1)', fill: 'backwards' })
@@ -430,8 +430,8 @@ const demoTools = () => `<section class="demo"><p class="tiny">데모 도구 · 
 /* ════════ 동작 ════════ */
 async function copy(text, done) { try { await navigator.clipboard.writeText(text); toast(done) } catch { prompt('복사해서 쓰세요', text) } }
 async function share(r) {
-  const url = roomUrl(r), text = isOpen(r) ? `'${r.title}' 열었어 🦘` : `'${r.title}' 주머니에 한 곡 몰래 넣어줘. 꽉 차면 같이 열자 🦘`
-  if (navigator.share && top === self) { try { await navigator.share({ title: 'Kanqaroo', text, url }); return } catch (e) { if (e.name === 'AbortError') return } }
+  const url = roomUrl(r), text = isOpen(r) ? `'${r.title}' 열었어 📼` : `'${r.title}' 테이프에 한 곡 몰래 넣어줘. 꽉 차면 같이 열자 📼`
+  if (navigator.share && top === self) { try { await navigator.share({ title: 'Mixxtape', text, url }); return } catch (e) { if (e.name === 'AbortError') return } }
   copy(`${text}\n${url}`, '링크를 복사했어요. 단톡방에 던져요')
 }
 const FAKE = [['밤양갱', '비비', '수아'], ['Supernova', 'aespa', '태오'], ['Magnetic', 'ILLIT', '하린'], ['Ditto', 'NewJeans', '민재'], ['唱', 'Ado', '예린'], ['APT.', 'ROSÉ', '준서'], ['Seven', '정국', '채원'], ['Love wins all', '아이유', '시우'], ['Kick It', 'NCT 127', '다은']]
@@ -450,9 +450,9 @@ document.addEventListener('click', (e) => {
   else if (act === 'drop') fly(r)
   else if (act === 'unseal') { $('#flip').classList.remove('sealed'); $('#sf').inert = false; $('#s-t').focus() }
   else if (act === 'nudge') {
-    const msg = `'${r.title}'\n${r.tracks.length}/${r.slots} 찼어. ${r.slots - r.tracks.length}자리 남았는데… 혹시 너?\n한 곡만 몰래 넣어줘 🦘\n${roomUrl(r)}`
+    const msg = `'${r.title}'\n${r.tracks.length}/${r.slots} 찼어. ${r.slots - r.tracks.length}자리 남았는데… 혹시 너?\n한 곡만 몰래 넣어줘 📼\n${roomUrl(r)}`
     $('#nudge-box').innerHTML = `<div class="notice"><div class="head cap">notice · 독촉장</div><pre>${esc(msg)}</pre></div><button class="btn on-ink full" data-act="copy-nudge">복사해서 단톡방에 붙이기</button>`
-    $('#nudge-box').dataset.msg = `📮 [Kanqaroo 독촉장]\n${msg}`
+    $('#nudge-box').dataset.msg = `📮 [Mixxtape 독촉장]\n${msg}`
     if (!RM) $('.notice').animate([{ transform: 'translateY(24px) rotate(5deg)', opacity: 0 }, { transform: 'rotate(-1deg)', opacity: 1 }], { duration: 440, easing: 'cubic-bezier(.25,1.4,.5,1)' })
     tone(700, 1100, .08, .1, 'square')
   }
@@ -463,7 +463,7 @@ document.addEventListener('click', (e) => {
   else if (act === 'fill') {
     let k = 0
     while (!isFull(r)) { const [t, a, by] = FAKE[k++ % FAKE.length]; r.tracks.push({ t, a, by, at: Date.now() }) }
-    save(); thud(); render(); toast('꽉 찼어요. 테이프를 뜯어요')
+    save(); thud(); render(); toast('꽉 찼어요. 봉인 띠를 뜯어요')
   }
   else if (act === 'tear') tearOpen(r)
   else if (act === 'replay') { me[r.id] = { ...(me[r.id] || {}), seen: false }; save(); render() }
@@ -473,7 +473,7 @@ document.addEventListener('click', (e) => {
     const csv = '﻿Track,Title,Artist' + (r.names ? ',Added by' : '') + '\n' + r.tracks.map((s, i) => [i + 1, cell(s.t), cell(s.a), ...(r.names ? [cell(s.by)] : [])].join(',')).join('\n')
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `${r.title}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
-  else if (act === 'reset') { if (confirm('예시 데이터로 되돌릴까요? 이 기기에 저장된 주머니가 모두 지워져요.')) { ['rooms', 'me', 'own'].forEach((k) => { try { localStorage.removeItem('kq3.' + k) } catch {} }); location.hash = ''; location.reload() } }
+  else if (act === 'reset') { if (confirm('예시 데이터로 되돌릴까요? 이 기기에 저장된 테이프가 모두 지워져요.')) { ['rooms', 'me', 'own'].forEach((k) => { try { localStorage.removeItem('mx1.' + k) } catch {} }); location.hash = ''; location.reload() } }
 })
 document.addEventListener('keydown', (e) => { const dz = e.target.closest?.('[data-drawer]'); if (dz && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); dz.click() } })
 
