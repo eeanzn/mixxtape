@@ -31,7 +31,85 @@ if (!token) {
   store.set('mx_token', token);
 }
 
+// 서버가 없는 곳(GitHub Pages)에서는 이 기기 localStorage가 서버 노릇을 한다.
+// 응답 모양은 src/worker.js와 같다. 서버를 붙이면 이 분기만 꺼진다.
+const LOCAL =
+  location.hostname.endsWith('github.io') || location.protocol === 'file:' || new URLSearchParams(location.search).has('local');
+
+const rid = (n) =>
+  [...crypto.getRandomValues(new Uint8Array(n))].map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+const localErr = (status, msg) => Object.assign(new Error(msg), { status });
+
+function jsonpSearch(q) {
+  return new Promise((resolve, reject) => {
+    const cb = 'mx_cb_' + Date.now();
+    const s = document.createElement('script');
+    const done = () => {
+      delete window[cb];
+      s.remove();
+    };
+    window[cb] = (d) => {
+      done();
+      resolve((d.results || []).map((r) => ({ title: r.trackName, artist: r.artistName, art: r.artworkUrl100 || null })));
+    };
+    s.onerror = () => {
+      done();
+      reject(new Error('검색이 잠깐 안 돼요. 직접 적어서 넣을 수 있어요'));
+    };
+    s.src = `https://itunes.apple.com/search?media=music&entity=song&country=KR&lang=ko_kr&limit=8&term=${encodeURIComponent(q)}&callback=${cb}`;
+    document.head.append(s);
+  });
+}
+
+async function localApi(path, { body, key } = {}) {
+  if (path.startsWith('/search')) return { results: await jsonpSearch(new URLSearchParams(path.split('?')[1]).get('q')) };
+  const db = JSON.parse(store.get('mx_db') || '{}');
+  const save = () => store.set('mx_db', JSON.stringify(db));
+
+  if (path === '/tapes') {
+    const id = rid(8);
+    const k = rid(20);
+    db[id] = { title: body.title, slots: body.slots, key: k, deadline: body.deadline, openedAt: null, tracks: [] };
+    save();
+    return { id, key: k };
+  }
+
+  const [, id, sub] = path.match(/^\/tapes\/([a-z0-9]+)(\/\w+)?$/) || [];
+  const t = db[id];
+  if (!t) throw localErr(404, '없는 테이프예요');
+  const settle = () => {
+    if (!t.openedAt && (t.tracks.length >= t.slots || (t.deadline && Date.now() >= t.deadline))) t.openedAt = Date.now();
+  };
+  settle();
+  if (sub === '/tracks') {
+    if (t.openedAt) throw localErr(409, '이미 개봉된 테이프예요');
+    if (t.tracks.some((x) => x.token === token)) throw localErr(409, '이미 한 곡 넣었어요');
+    t.tracks.push({ token, nick: body.nick, title: body.title, artist: body.artist, art: body.art || null });
+    settle();
+  }
+  if (sub === '/open') {
+    if (key !== t.key) throw localErr(403, '만든 사람만 개봉할 수 있어요');
+    t.openedAt ||= Date.now();
+  }
+  save();
+
+  const pub = ({ nick, title, artist, art }) => ({ nick, title, artist, art });
+  const mineAt = t.tracks.findIndex((x) => x.token === token);
+  return {
+    id,
+    title: t.title,
+    slots: t.slots,
+    filled: t.tracks.length,
+    deadline: t.deadline,
+    opened: Boolean(t.openedAt),
+    owner: key === t.key,
+    mine: mineAt < 0 ? null : { ...pub(t.tracks[mineAt]), index: mineAt },
+    tracks: t.openedAt ? t.tracks.map(pub) : null,
+  };
+}
+
 async function api(path, { method = 'GET', body, key } = {}) {
+  if (LOCAL) return localApi(path, { body, key });
   const res = await fetch('/api' + path, {
     method,
     headers: { 'content-type': 'application/json', 'x-token': token, ...(key ? { 'x-key': key } : {}) },
@@ -120,7 +198,7 @@ const floaters = (() => {
       layer.append(el);
       // 가운데 글자를 가리지 않게 가장자리 쪽에서 시작
       const side = i % 2 ? 1 : -1;
-      const x = W / 2 + side * (W * 0.22 + Math.random() * W * 0.28) - s / 2;
+      const x = W < 700 ? (side < 0 ? -s * 0.4 : W - s * 0.6) : W / 2 + side * (W * 0.22 + Math.random() * W * 0.28) - s / 2;
       const y = Math.random() * (H - s);
       const a = Math.random() * Math.PI * 2;
       return { el, s, x, y, vx: Math.cos(a) * 0.25, vy: Math.sin(a) * 0.25 };
@@ -149,8 +227,9 @@ const floaters = (() => {
       }
       // 가운데(글자 자리)에서는 살짝 밀어낸다
       const mx = cx - W / 2;
-      const zone = Math.min(W * 0.26, 300);
-      if (Math.abs(mx) < zone && W > 700) p.vx += Math.sign(mx || 1) * 0.02;
+      // 좁은 화면에서는 양옆 가장자리에 반쯤 걸쳐서 논다
+      const zone = W > 700 ? Math.min(W * 0.26, 300) : W / 2 - p.s * 0.25;
+      if (Math.abs(mx) < zone) p.vx += Math.sign(mx || 1) * (W > 700 ? 0.02 : 0.05);
 
       const sp = Math.hypot(p.vx, p.vy);
       if (sp > 0.35) {
@@ -162,8 +241,8 @@ const floaters = (() => {
       }
       p.x += p.vx;
       p.y += p.vy;
-      if (p.x < -p.s * 0.3) p.vx = Math.abs(p.vx);
-      if (p.x > W - p.s * 0.7) p.vx = -Math.abs(p.vx);
+      if (p.x < -p.s * 0.45) p.vx = Math.abs(p.vx);
+      if (p.x > W - p.s * 0.55) p.vx = -Math.abs(p.vx);
       if (p.y < -p.s * 0.3) p.vy = Math.abs(p.vy);
       if (p.y > H - p.s * 0.7) p.vy = -Math.abs(p.vy);
       p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.vx * 14}deg)`;
@@ -176,6 +255,8 @@ const floaters = (() => {
 
 // ── 길 찾기 ──
 let pollTimer;
+const HOME = location.pathname;
+const tapeUrl = (id) => `${HOME}?t=${id}${new URLSearchParams(location.search).has('local') ? '&local' : ''}`;
 function go(path) {
   history.pushState(null, '', path);
   route();
@@ -184,14 +265,14 @@ document.addEventListener('click', (e) => {
   const a = e.target.closest('a[data-link]');
   if (!a || e.metaKey || e.ctrlKey) return;
   e.preventDefault();
-  go(a.getAttribute('href'));
+  go(HOME);
 });
 addEventListener('popstate', route);
 
 function route() {
   clearInterval(pollTimer);
   scrollTo(0, 0);
-  const m = location.pathname.match(/^\/t\/([a-z0-9]{8})$/);
+  const m = (new URLSearchParams(location.search).get('t') || '').match(/^([a-z0-9]{8})$/);
   $('#newBtn').hidden = !m;
   if (m) return tapeView(m[1]);
   homeView();
@@ -200,14 +281,14 @@ function route() {
 // ── 홈: 테이프 만들기 ──
 function homeView() {
   document.title = 'mixxtape';
-  floaters.set(innerWidth < 600 ? 7 : 12);
+  floaters.set(innerWidth < 700 ? 6 : 12);
   let slots = 9;
   let hours = 0;
 
   app.innerHTML = `
     <section class="view">
       <div class="center">
-        <h1>한 곡씩 몰래,<br />같이 완성하는 플리</h1>
+        <h1>한 곡씩 몰래,<br />같이 플레이리스트를<br />완성해요</h1>
         <p class="lead">다 찰 때까지 누가 뭘 넣었는지 아무도 몰라요.</p>
       </div>
 
@@ -273,7 +354,7 @@ function homeView() {
         body: { title, slots, deadline: hours ? Date.now() + hours * 3600e3 : null },
       });
       store.set('mx_key_' + id, key);
-      go('/t/' + id);
+      go(tapeUrl(id));
     } catch (err) {
       toast(err.message);
       btn.disabled = false;
@@ -291,10 +372,10 @@ async function tapeView(id) {
   const hashKey = new URLSearchParams(location.hash.slice(1)).get('k');
   if (hashKey) {
     store.set('mx_key_' + id, hashKey);
-    history.replaceState(null, '', location.pathname);
+    history.replaceState(null, '', tapeUrl(id));
   }
   const key = store.get('mx_key_' + id);
-  const url = `${location.origin}/t/${id}`;
+  const url = location.origin + tapeUrl(id);
 
   let tape;
   let picked = null; // 고른 곡
@@ -309,7 +390,7 @@ async function tapeView(id) {
       <section class="view center">
         <h1>${err.status === 404 ? '없는 테이프예요' : '잠깐 안 열려요'}</h1>
         <p class="lead">${err.status === 404 ? '링크를 다시 확인해주세요.' : esc(err.message)}</p>
-        <p class="mt"><a class="btn" href="/" data-link>새 테이프 만들기</a></p>
+        <p class="mt"><a class="btn" href="./" data-link>새 테이프 만들기</a></p>
       </section>`;
     return;
   }
@@ -342,9 +423,11 @@ async function tapeView(id) {
         <div class="center">
           <p class="eyebrow">블라인드 테이프${tape.deadline ? ` · ${esc(fmtDeadline(tape.deadline))}에 개봉` : ''}</p>
           <h1>${esc(tape.title)}</h1>
-          <p class="count" id="count"></p>
         </div>
-        <div class="tray" id="tray"></div>
+        <div class="ring-wrap">
+          <div class="tray" id="tray"></div>
+          <p class="count" id="count" aria-live="polite"></p>
+        </div>
         <div class="panel" id="panel"></div>
         ${
           tape.owner
@@ -358,7 +441,26 @@ async function tapeView(id) {
               </div>`
             : ''
         }
+        ${
+          LOCAL
+            ? `<div class="demo">
+                <p>지금은 체험판이라 이 기기에만 저장돼요. 링크를 보내도 친구 기기에서는 안 열려요.</p>
+                <button class="btn small ghost" id="asFriend">다른 친구인 척 들어가기</button>
+              </div>`
+            : ''
+        }
       </section>`;
+    if (LOCAL) {
+      $('#asFriend').onclick = async () => {
+        token = crypto.randomUUID();
+        store.set('mx_token', token);
+        tape = await api('/tapes/' + id, { key });
+        picked = null;
+        manual = false;
+        render();
+        toast('새 친구로 들어왔어요');
+      };
+    }
     paintTray(false);
     paintPanel();
 
@@ -379,13 +481,24 @@ async function tapeView(id) {
   function paintTray(fromPoll) {
     const tray = $('#tray');
     if (!tray) return;
-    $('#count').innerHTML = `<b>${tape.filled}</b> / ${tape.slots}곡`;
-    tray.innerHTML = Array.from({ length: tape.slots }, (_, i) => {
-      if (i >= tape.filled) return `<span class="coin empty" aria-label="빈 자리"></span>`;
+    const n = tape.slots;
+    const count = $('#count');
+    count.innerHTML = `<span><b>${tape.filled}</b>/${n}</span>`;
+    if (justDropped || fromPoll) {
+      count.classList.remove('bump');
+      void count.offsetWidth;
+      count.classList.add('bump');
+    }
+    // 자리 수가 많아질수록 코인이 작아져서 고리에 딱 맞게
+    const f = (0.8 * Math.PI) / (n + 0.8 * Math.PI);
+    tray.style.setProperty('--s', `min(88px, ${(f * 100).toFixed(2)}cqw)`);
+    tray.innerHTML = Array.from({ length: n }, (_, i) => {
+      const wrap = (inner) => `<span class="slot" style="--a:${(i * 360) / n}deg"><span class="up">${inner}</span></span>`;
+      if (i >= tape.filled) return wrap(`<span class="coin empty" aria-label="빈 자리"></span>`);
       const mine = tape.mine?.index === i;
       const isNew = i === tape.filled - 1 && (justDropped || fromPoll);
-      return `<button class="coin ${mine ? 'mine' : ''} ${isNew ? 'drop' : ''}" style="--c:${COLORS[i % COLORS.length]}"
-        aria-label="${mine ? '내가 넣은 곡' : '누군가 넣은 곡'}">${eyes(i)}</button>`;
+      return wrap(`<button class="coin ${mine ? 'mine' : ''} ${isNew ? 'drop' : ''}" style="--c:${COLORS[i % COLORS.length]}"
+        aria-label="${mine ? '내가 넣은 곡' : '누군가 넣은 곡'}">${eyes(i)}</button>`);
     }).join('');
     justDropped = false;
     // 톡 치면 흔들린다. 뭐가 들었는지는 안 알려준다
